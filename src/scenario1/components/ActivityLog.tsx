@@ -67,8 +67,17 @@ export default function ActivityLog({ entries, agentEntries }: Props) {
               <div key={i} style={{ display: "flex", gap: 7, marginBottom: 8, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{AGENT_ICON[e.type]}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 1, gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: AGENT_COLOR[e.type] }}>{e.step}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2, gap: 4 }}>
+                    <div style={{ flex: 1 }}>
+                      {e.step.startsWith("[") && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "#8B5CF6", background: "#F5F3FF", padding: "1px 6px", borderRadius: 8, marginRight: 5 }}>
+                          {e.step.match(/\[.*?\]/)?.[0]}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, fontWeight: 600, color: AGENT_COLOR[e.type] }}>
+                        {e.step.replace(/\[.*?\]\s*/, "")}
+                      </span>
+                    </div>
                     <span style={{ fontSize: 10, color: "#9CA3AF", flexShrink: 0 }}>{e.time}</span>
                   </div>
                   <div style={{ fontSize: 10, color: "#374151", lineHeight: 1.4 }}>{e.detail}</div>

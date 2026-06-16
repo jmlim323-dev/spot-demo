@@ -251,8 +251,8 @@ export default function SpotScenario1() {
 
     // 총 2분(120초)을 남은 세그먼트 수로 나눔
     const remainingSegs = PATROL_PATH.length - fromIdx - 1;
-    const msPerSeg = remainingSegs > 0 ? 120000 / remainingSegs : 120000;
-    const CHECKPOINT_PAUSE = 800; // 체크포인트마다 잠깐 멈추는 시간(ms)
+    const msPerSeg = remainingSegs > 0 ? 180000 / remainingSegs : 180000;
+    const CHECKPOINT_PAUSE = 3000; // 체크포인트마다 잠깐 멈추는 시간(ms)
 
     let currentIdx = fromIdx;
     let segStart = performance.now();
@@ -318,9 +318,10 @@ export default function SpotScenario1() {
         addLog(`이상 감지: ${ev.title} — AI 자동 처리 시작`, "warn");
         showToast(`⚠️ ${ev.title} 감지 — 계속 순찰 중`);
         // AI 자동 조치 로그 순차 기록
-        setTimeout(() => addAgentLog("이상 탐지", `${ev.title} 감지 — 카메라·센서 데이터 수집 완료`, "analyze"), 500);
-        setTimeout(() => addAgentLog("원인 분석", "AI 모델 추론 완료 — 즉각 조치 필요", "analyze"), 2000);
-        setTimeout(() => addAgentLog("담당자 알림", `시설 관리팀 ${ev.icon} 알림 발송 완료`, "notify"), 5000);
+        setTimeout(() => addAgentLog(`[${ev.icon} ${ev.title}] 이상 탐지`, "카메라·센서 데이터 수집 완료", "analyze"), 800);
+        setTimeout(() => addAgentLog(`[${ev.icon} ${ev.title}] 원인 분석`, "이미지 분석 완료 — 이상 징후 확인됨", "analyze"), 3000);
+        setTimeout(() => addAgentLog(`[${ev.icon} ${ev.title}] 담당자 알림`, "시설 관리팀 알림 자동 발송 완료", "notify"), 5500);
+        setTimeout(() => addAgentLog(`[${ev.icon} ${ev.title}] 리포트 작성`, "사고 리포트 초안 생성 완료", "complete"), 8000);
         // 다음 이벤트 인덱스로 업데이트하고 계속 순찰
         nextEventIdx = nextEventIdx + 1;
         const nextNextEvent = EVENT_SEQUENCE[nextEventIdx] ?? null;
