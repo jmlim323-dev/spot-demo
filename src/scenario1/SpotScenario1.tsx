@@ -300,14 +300,13 @@ export default function SpotScenario1() {
       segStart = now;
 
       if (next === triggerPt && nextEvent) {
-        // 미션 멈추지 않고 계속 — AI가 자동 처리 후 투두 추가
         const ev = EVENT_CONFIGS[nextEvent];
         const detectedTime = nowHMS();
         setDetectedAt(detectedTime);
-        // 감지된 이벤트를 투두리스트에 추가 (유효한 EventType만)
+
+        // 투두리스트에 추가
         const validTypes = ["fire_extinguisher", "server_room", "device_failure"];
         if (validTypes.includes(nextEvent)) {
-          // ref로 최신 state 직접 읽기 (stale closure 방지)
           const current = todoEventsRef.current;
           if (!current.find(t => t.eventType === nextEvent)) {
             const updated = [...current, { eventType: nextEvent as EventType, detectedAt: detectedTime, checks: {} }];
@@ -315,14 +314,30 @@ export default function SpotScenario1() {
             setTodoEvents(updated);
           }
         }
-        addLog(`이상 감지: ${ev.title} — AI 자동 처리 시작`, "warn");
-        showToast(`⚠️ ${ev.title} 감지 — 계속 순찰 중`);
-        // AI 자동 조치 로그 순차 기록
+
+        // AI 자동 조치 로그
         setTimeout(() => addAgentLog(`[${ev.icon} ${ev.title}] 이상 탐지`, "카메라·센서 데이터 수집 완료", "analyze"), 800);
         setTimeout(() => addAgentLog(`[${ev.icon} ${ev.title}] 원인 분석`, "이미지 분석 완료 — 이상 징후 확인됨", "analyze"), 3000);
         setTimeout(() => addAgentLog(`[${ev.icon} ${ev.title}] 담당자 알림`, "시설 관리팀 알림 자동 발송 완료", "notify"), 5500);
         setTimeout(() => addAgentLog(`[${ev.icon} ${ev.title}] 리포트 작성`, "사고 리포트 초안 생성 완료", "complete"), 8000);
-        // 다음 이벤트 인덱스로 업데이트하고 계속 순찰
+
+        if (nextEvent === "device_failure") {
+          // 기기 고장은 미션 정지 — 보조 Spot 투입 승인 후 재개
+          cancelAnimationFrame(rafId);
+          setSpotPos({ x: PATROL_PATH[next].x, y: PATROL_PATH[next].y, angle: 0 });
+          setIsRunning(false);
+          setMissionStatus("paused");
+          setActiveEvent("device_failure");
+          setEventSeqIdx(nextEventIdx);
+          addLog(`이상 감지: ${ev.title} — 미션 일시정지`, "warn");
+          showToast(`⚠️ ${ev.title} 감지 — 조치 필요`);
+          return;
+        }
+
+        addLog(`이상 감지: ${ev.title} — AI 자동 처리 시작`, "warn");
+        showToast(`⚠️ ${ev.title} 감지 — 계속 순찰 중`);
+
+        // 다음 이벤트로 넘어가서 계속 순찰
         nextEventIdx = nextEventIdx + 1;
         const nextNextEvent = EVENT_SEQUENCE[nextEventIdx] ?? null;
         triggerPt = nextNextEvent ? EVENT_CONFIGS[nextNextEvent].triggerPoint : PATROL_PATH.length;
@@ -331,7 +346,19 @@ export default function SpotScenario1() {
 
       if (PATROL_PATH[next].isCheckpoint && PATROL_PATH[next].label) {
         addLog(`체크포인트 도착: ${PATROL_PATH[next].label}`, "info");
-        // 체크포인트에서 잠깐 멈춤
+        // 체크포인트별 추가 로그
+        const cpLogs: Record<string, string[]> = {
+          "p1":  ["SPOT-01 시동 완료 — 배터리 98% 확인", "카메라·라이다 센서 정상 작동 확인"],
+          "p3":  ["소화기 구역 스캔 완료", "열화상 카메라 이상 없음"],
+          "p5":  ["서버룸 외부 온도 스캔 시작", "공조 시스템 작동음 정상 확인"],
+          "p7":  ["전방 50cm 이동 물체 감지 — 경로 우회 중", "장애물 회피 후 정상 경로 복귀"],
+          "p9":  ["설비실 C구역 진입", "컴프레서 #3 헬스체크 시도 중"],
+          "p11": ["복귀 경로 진입 — 좁은 통로 저속 이동", "벽면 근접 감지 — 안전 거리 유지"],
+          "p13": ["도킹 스테이션 근접 — 속도 감소", "귀환 완료 — 충전 대기 중"],
+        };
+        const pt = PATROL_PATH[next];
+        const extras = cpLogs[pt.id] ?? [];
+        extras.forEach((msg, i) => setTimeout(() => addLog(msg, "info"), 600 + i * 800));
         setTimeout(() => {
           segStart = performance.now();
           rafId = requestAnimationFrame(tick);
@@ -366,18 +393,20 @@ export default function SpotScenario1() {
   };
 
   const resumePatrol = (fromIdx: number, nextEventIdx: number) => {
-    // completedEvents 먼저 업데이트 (activeEvent가 null되기 전에)
     setCompletedEvents(prev =>
       activeEvent ? [...prev.filter(e => e !== activeEvent), activeEvent] : prev
     );
     setMissionStatus("patrolling");
     setActionStep("monitoring");
     setActiveEvent(null);
+    setActiveEventForModal(null);
     setShowModal(false);
     setIsRunning(true);
     addLog("미션 재개 — 순찰 계속", "info");
-    addAgentLog("조치 완료", "이벤트 처리 완료 — 미션 재개 승인됨", "complete");
-    runPatrol(fromIdx, nextEventIdx);
+    addAgentLog("[⚠️ 기기 동작 불가] 조치 완료", "보조 Spot 투입 승인 — 미션 재개", "complete");
+    // 다음 이벤트(device_failure 이후)로 넘어가서 계속
+    const nextEvIdx = nextEventIdx + 1;
+    runPatrol(fromIdx, nextEvIdx);
   };
 
   const handleAction = (action: string, currentIdx: number, nextEvIdx: number) => {

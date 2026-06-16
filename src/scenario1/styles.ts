@@ -60,7 +60,7 @@ export const layout = {
 
   mainGrid: {
     display: "grid",
-    gridTemplateColumns: "6fr 4fr",
+    gridTemplateColumns: "7fr 3fr",
     gap: 0,
     flex: 1,
     overflow: "hidden",
